@@ -49,14 +49,25 @@ class Client:
 
         self.ns = ServerProxy(os.environ['YAD_NS'])
 
+    def list(self, path):
+        return self.ns.list(path)
+
     def list_dir(self, dir_path):
         return self.ns.list_directory(dir_path)
+    
+    def list_file(self, file_path):
+        return self.ns.list_file(file_path)
 
     def create_dir(self, path):
         return self.ns.make_directory(path)
+    
+
 
     def delete_dir(self, path):
         return self.ns.delete_dir(path)
+    
+    def delete_file(self, path):
+        return self.ns.delete_file(path)
 
     def create_file(self, path, remote_path):
         fn = path.split("/")[-1]
@@ -69,7 +80,8 @@ class Client:
             data = fr.read()
 
         return self._save_file_to_dfs(data, remote_filepath)
-
+    
+    
     def _save_file_to_dfs(self, content, remote_filepath):
         r = self._get_cs(remote_filepath)
         if not r['status'] == Status.ok:
@@ -87,11 +99,38 @@ class Client:
             data['chunks'][remote_filepath + '_' + str(count)] = cs_addr
 
         return self.ns.create_file(data)
+    
+    def upload_file(self, path, remote_path):
+        fn = path.split("/")[-1]
+        remote_filepath = os.path.join(remote_path, fn)
+
+        if not os.path.isfile(path):
+            return {'status': Status.not_found}
+
+        with open(path, 'r') as fr:
+            data = fr.read()
+
+        return self._save_file_to_dfs(data, remote_filepath)
 
     def delete(self, path):
         return self.ns.delete(path)
+    
+    def delete_file(self, path):
+        return self.ns.delete_file(path)
 
     def download_file(self, path, dst_path):
+        result, content = self.get_file_content(path)
+        if result != Status.ok:
+            return {'status': result}
+
+        fn = path.split("/")[-1]
+        self.make_sure_path_exists(dst_path)
+        file_path = os.path.join(dst_path, fn)
+        with open(file_path, "w") as f:
+            f.write(content)
+            return {'status': Status.ok}
+        
+    def download_dir(self, path, dst_path):
         result, content = self.get_file_content(path)
         if result != Status.ok:
             return {'status': result}
@@ -124,12 +163,16 @@ class Client:
 
         return Status.ok, content
 
+
+
     def get_file_info(self, path):
         info = self.ns.get_file_info(path)
         if info['status'] != Status.ok:
             return info['status'], None
         
         return Status.ok, info
+    
+
 
     def get_chunk(self, path, chunk_id):
         info = self.ns.get_file_info(path)
@@ -142,8 +185,21 @@ class Client:
                 cs = ServerProxy(addr)
                 chunk_data = cs.get_chunk(chunk)
                 return Status.ok, chunk_data
+    
+    def get_chunk_info(self, path, chunk_id):
+        info = self.ns.get_file_info(path)
+        if info['status'] != Status.ok:
+            return info['status'], None
+        
+        chunks = info['chunks']
+        for chunk, addr in chunks.items():
+            if int(chunk.split("_")[-1]) == chunk_id:
+                return Status.ok, chunk
 
     def path_status(self, path):
+        return self.ns.get_file_info(path)
+    
+    def get_file_info_(self, path):
         return self.ns.get_file_info(path)
 
     def _get_cs(self, path):
@@ -152,6 +208,9 @@ class Client:
         if 'cs' not in result:
             return {'status': Status.error, 'cs': None}
         return {'status': Status.ok, 'cs': result['cs']}
+    
+    def get_cs(self, path):
+        return self._get_cs(path)
 
     def get_chunk(self, path):
         r_index = path.rindex('_')
@@ -165,6 +224,17 @@ class Client:
 
         return {'status': Status.not_found}
 
+    def get_chunk_info_2(self, path):
+        r_index = path.rindex('_')
+        f_path = path[:r_index]
+
+        info = self.ns.get_file_info(f_path)
+        for chunk, addr in info['chunks'].items():
+            if chunk == path:
+                return {'status': Status.ok, 'data': chunk}
+
+        return {'status': Status.not_found}
+    
     def download_to(self, v_path, l_path):
         st, data = self.get_file_content(v_path)
         os.makedirs(os.path.dirname(l_path), exist_ok=True)
@@ -172,17 +242,32 @@ class Client:
             f.write(data)
 
         return {'status': Status.ok}
+    
 
     def save(self, data, path):
         st = self._save_file_to_dfs(data, path)
         return {'status': st}
+
+    def download_to_(self, v_path, l_path):
+        st, data = self.get_file_content(v_path)
+        os.makedirs(os.path.dirname(l_path), exist_ok=True)
+        with open(l_path, "w") as f:
+            f.write(data)
+
+        return {'status': Status.ok}
+    
+    def save_(self, data, path):
+
+        st = self._save_file_to_dfs(data, path)
+        return {'status': st}
+    
 
     @staticmethod
     def split_file(data, chunksize=1024):
         chunks = []
         while len(data) >= chunksize:
             i = chunksize
-            while not data[i].isspace():
+            while not data[i]==' ':
                 if i == 0:
                     i = chunksize
                     break
@@ -193,6 +278,7 @@ class Client:
         chunks.append(data)
         return chunks
 
+    
     @staticmethod
     def write_combined_file(filename, chunks):
         if os.path.isfile(filename):

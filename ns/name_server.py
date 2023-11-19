@@ -425,7 +425,6 @@ class NameNode:
         return {'status': Status.ok}
 
 
-
 if __name__ == '__main__':
     host = socket.gethostbyname(socket.gethostname())
     port = 8888

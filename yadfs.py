@@ -14,15 +14,23 @@ import difflib
 def cli(ctx):
     pass
 
-@cli.command()
-@click.argument('path', default="/")
+# @cli.command()#Useless command
+@click.argument('path', default=None)
 def cd(path):
-    '''Change the current directory'''
+    '''Change the current directory.'''
     try:
-        os.chdir(path)
-        print(f"Changed directory to {os.getcwd()}")
+        if path is None:
+            # If no path is provided, print the current directory
+            print(f"Current directory: {os.getcwd()}")
+        else:
+            # Change the directory and print the new path
+            new_path = os.path.join(os.getcwd(), path)
+            os.chdir(new_path)
+            print(f"Changed directory to {os.getcwd()}")
     except FileNotFoundError:
         print(f"Directory '{path}' not found.")
+    except PermissionError:
+        print(f"Permission denied to access directory '{path}'.")
     except Exception as e:
         print(f"Error changing directory: {e}")
 
@@ -44,6 +52,7 @@ def ls(path):
     else:
         print(Status.description(stat))
 
+# @cli.command()#Useless command
 @click.command()
 def pwd():
     """Print the current working directory"""
@@ -60,7 +69,7 @@ def mkdir(path):
     if stat != Status.ok:
         print(Status.description(stat))
 
-@cli.command()
+# @cli.command()#Useless command
 @click.argument('source')
 @click.argument('destination')
 def cp(source, destination):
@@ -100,7 +109,7 @@ def rm(path):
     if stat != Status.ok:
         print(Status.description(stat))
 
-@cli.command()
+# @cli.command()#useless command
 @click.argument('source')
 @click.argument('destination')
 def mv(source, destination):
@@ -136,12 +145,11 @@ def download(path_from, path_to):
     """Download a file"""
     cl = Client()
     res = cl.download_file(path_from, path_to)
-    # print(res)
     stat = res['status']
     if stat != Status.ok:
         print(Status.description(stat))
 
-@cli.command()
+# @cli.command()#useless command
 @click.argument('path', default='.')
 def du(path):
     """Display file and directory space usage"""
@@ -152,7 +160,7 @@ def du(path):
             total_size += os.path.getsize(filepath)
     print(f"Total size of '{path}': {total_size} bytes")
 
-@cli.command()
+# @cli.command()#useless command
 @click.argument('file1')
 @click.argument('file2')
 def diff(file1, file2):
@@ -162,7 +170,7 @@ def diff(file1, file2):
         for line in diff_lines:
             print(line, end='')
             
-@cli.command()
+# @cli.command()#useless command
 @click.argument('file_path')
 def wc(file_path):
     """Count lines, words, and characters in a file"""
