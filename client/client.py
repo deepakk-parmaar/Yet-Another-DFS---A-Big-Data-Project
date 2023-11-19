@@ -4,9 +4,40 @@ import errno
 from xmlrpc.client import ServerProxy
 
 import sys
-from os.path import dirname
-sys.path.append(dirname(dirname(__file__)))
-from utils.enums import Status
+# from os.path import dirname
+# sys.path.append(dirname(dirname(__file__)))
+# from utils.enums import Status
+class NodeType:
+    directory = 2
+    file = 1
+    @staticmethod
+    def description(stat):
+        node = ''
+        if stat == 2:
+            node = 'directory'
+        elif stat == 1:
+            node = 'file'
+        return node
+
+class Status:
+    ok = 200
+    error = 500
+    already_exists = 409
+    not_found = 404
+    
+    @staticmethod
+    def description(stat):
+        message = ''
+        if stat == 409:
+            message = 'Error 409 - Item Already Exists!'
+        elif stat == 404:
+            message = 'Error 404 - Item Not Found!'
+        elif stat == 200:
+            message = 'Status 200 - Okay.'
+        elif stat == Status.error:
+            message = 'Error 500 - Internal error.'
+        return message
+
 
 class Client:
     def __init__(self, ns_addr=None):
@@ -116,7 +147,11 @@ class Client:
         return self.ns.get_file_info(path)
 
     def _get_cs(self, path):
-        return self.ns.get_cs(path)
+        result = self.ns.get_cs(path)
+        print(result)
+        if 'cs' not in result:
+            return {'status': Status.error, 'cs': None}
+        return {'status': Status.ok, 'cs': result['cs']}
 
     def get_chunk(self, path):
         r_index = path.rindex('_')

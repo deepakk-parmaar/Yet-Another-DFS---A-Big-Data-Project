@@ -1,8 +1,10 @@
 #!/usr/bin/env python3.11
 class NodeType:
+    directory = 2
+    file = 1
     @staticmethod
     def description(stat):
-    	node = ''
+        node = ''
         if stat == 2:
             node = 'directory'
         elif stat == 1:
@@ -10,9 +12,14 @@ class NodeType:
         return node
 
 class Status:
+    ok = 200
+    error = 500
+    already_exists = 409
+    not_found = 404
+    
     @staticmethod
     def description(stat):
-    	message = ''
+        message = ''
         if stat == 409:
             message = 'Error 409 - Item Already Exists!'
         elif stat == 404:

@@ -9,19 +9,259 @@ from datetime import datetime
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.client import ServerProxy
 import time
-from os.path import dirname
-sys.path.append(dirname(dirname(__file__)))
-from utils.enums import NodeType, Status
 from queue import Queue
+
+class NodeType:
+    directory = 2
+    file = 1
+    @staticmethod
+    def description(stat):
+        node = ''
+        if stat == 2:
+            node = 'directory'
+        elif stat == 1:
+            node = 'file'
+        return node
+
+class Status:
+    ok = 200
+    error = 500
+    already_exists = 409
+    not_found = 404
+    
+    @staticmethod
+    def description(stat):
+        message = ''
+        if stat == 409:
+            message = 'Error 409 - Item Already Exists!'
+        elif stat == 404:
+            message = 'Error 404 - Item Not Found!'
+        elif stat == 200:
+            message = 'Status 200 - Okay.'
+        elif stat == Status.error:
+            message = 'Error 500 - Internal error.'
+        return message
+
+
+class FileNode:
+    def __init__(self, name, node_type):
+        self.name = name
+        self.parent = None
+        self.children = []
+        self.type = node_type
+        self._size = 0
+        self.date = time.time()
+        self.chunks = {}
+
+    @property
+    def is_root(self):
+        return self.parent is None
+
+    @property
+    def size(self):
+        if self.type == NodeType.directory:
+            return sum(c.size for c in self.children)
+
+        return self._size
+
+    @size.setter
+    def size(self, value):
+        self._size = value
+
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+
+    def find_path(self, path):
+        if path == self.name:
+            return self
+
+        ch_name, ch_path = self._extract_child_path_and_name(path)
+
+        for child in self.children:
+            if child.name == ch_name:
+                return child.find_path(ch_path)
+
+        return None
+
+    @staticmethod
+    def _extract_child_path_and_name(path):
+        path = path.strip('/')
+        next_sep = path.find('/')
+
+        if next_sep == -1:
+            ch_name = path
+            ch_path = path
+        else:
+            ch_name = path[0:next_sep]
+            ch_path = path[next_sep + 1:]
+        return ch_name, ch_path
+
+    @staticmethod
+    def _extract_file_name_and_file_dir(path):
+        path = path.strip('/')
+        sep = path.rfind('/')
+
+        if sep == -1:
+            f_name = path
+            f_dir = None
+        else:
+            f_name = path[sep + 1: len(path)]
+            f_dir = path[: sep]
+        return f_name, f_dir
+
+    def create_dir(self, path):
+        dirs = path.strip('/').split('/')
+        curr_dir = self
+        i = 0
+        while i < len(dirs):
+            d_name = dirs[i]
+
+            directory = next((x for x in curr_dir.children if x.name == d_name), None)
+            if directory is None:
+                directory = FileNode(d_name, NodeType.directory)
+                curr_dir.add_child(directory)
+
+            elif directory.type == NodeType.file:
+                print("Can't create directory because of the wrong file name " + d_name)
+                return "Error"
+            curr_dir = directory
+            i += 1
+
+        return curr_dir
+
+    def create_file(self, path):
+        f_name, f_dir = self._extract_file_name_and_file_dir(path)
+
+        if f_dir is not None:
+            directory = self.create_dir(f_dir)
+
+            if directory == "Error":
+                return 'Error'
+        else:
+            directory = self
+
+        file = FileNode(f_name, NodeType.file)
+        directory.add_child(file)
+        return file
+
+    def find_file_by_chunk(self, path):
+
+        i = path.rfind('_')
+        if i is None:
+            print("Incorrect chunk path", path)
+            return Status.error
+
+        file_name = path[:i]
+        return self.find_path(file_name)
+
+    def delete(self):
+        if not self.is_root:
+            self.parent.children.remove(self)
+            self.parent = None
+
+    def get_full_path(self):
+        if self.is_root:
+            return ''
+        else:
+            return self.parent.get_full_path() + '/' + self.name
+
+    def get_full_dir_path(self):
+        if self.is_root:
+            return ''
+
+        path = self.parent.get_full_dir_path()
+        if self.type == NodeType.directory:
+            path += '/' + self.name
+
+        return path
+
+class Replicator:
+    def __init__(self, ns):
+        self.ns = ns
+        self.queue = Queue()
+        self.on = True
+
+    def start(self):
+        print('Start replication workers')
+        _thread.start_new_thread(self._replicate_worker, ())
+        _thread.start_new_thread(self.server_watcher, ())
+
+    def put_in_queue(self, path, existing_cs):
+        item = (path, existing_cs)
+        self.queue.put(item)
+
+    def _replicate_worker(self):
+        while self.on:
+            item = self.queue.get()
+            self.replicate(item)
+
+    def replicate(self, item):
+        if item is None:
+            return
+
+        path = item[0]
+        cs_list = item[1]
+
+        alive = [x for x in cs_list if self.ns._is_alive_cs(x)]
+
+        if len(alive) == 0:
+            print('There is no live CS for chunk', path)
+            return
+
+        if len(alive) >= 2:
+            print('File', path, 'is already replicated to more than 2 nodes')
+            return
+
+        new_cs = self.ns._select_available_cs(alive)
+        if new_cs is None:
+            print("Can't find available CS for replication", path)
+        else:
+            try:
+                cl = ServerProxy(alive[0])
+                cl.replicate_chunk(path, new_cs)
+                print("File", path, "replicated to", new_cs)
+
+                file = self.ns.root.find_file_by_chunk(path)
+                if file is not None and path in file.chunks:
+                    file.chunks[path].append(new_cs)
+                else:
+                    print("Can't find file for chunk", path, "after replication")
+            except Exception as e:
+                print('Error during replication', path, 'to', new_cs, ':', e)
+
+    def server_watcher(self):
+        while self.on:
+            for cs_name in list(self.ns.cs):
+                if not self.ns._is_alive_cs(cs_name):
+                    print('CS', cs_name, 'detected as not alive')
+                    self.ns.cs.pop(cs_name)
+                    _thread.start_new_thread(self.emergency_replication, ())
+            time.sleep(1)
+
+    def emergency_replication(self):
+        print('Start emergency replication for files from')
+        self.traverse_replication(self.ns.root)
+
+    def traverse_replication(self, item):
+        if item.type == NodeType.file:
+            for c in list(item.chunks):
+                alive = [x for x in item.chunks[c] if self.ns._is_alive_cs(c)]
+                if len(alive) < 2:
+                    print('Chunk', c, 'put to replication')
+                    self.put_in_queue(c, item.chunks[c])
+        else:
+            for c in item.children:
+                self.traverse_replication(c)
 
 class NameNode:
     def __init__(self, dump_on=True, dump_path="./name_server.yml", cs_timeout=2):
-        self.root = self.FileNode('/', NodeType.directory)
+        self.root = FileNode('/', NodeType.directory)
         self.dump_on = dump_on
         self.dump_path = dump_path
         self.cs_timeout = cs_timeout
         self.cs = {}
-        self.repl = self.Replicator(self)
+        self.repl = Replicator(self)
 
     def start(self):
         self._load_dump()
@@ -184,216 +424,6 @@ class NameNode:
         self.cs[cs_addr] = datetime.now()
         return {'status': Status.ok}
 
-    class FileNode:
-        def __init__(self, name, node_type):
-            self.name = name
-            self.parent = None
-            self.children = []
-            self.type = node_type
-            self._size = 0
-            self.date = time.time()
-            self.chunks = {}
-
-        @property
-        def is_root(self):
-            return self.parent is None
-
-        @property
-        def size(self):
-            if self.type == NodeType.directory:
-                return sum(c.size for c in self.children)
-
-            return self._size
-
-        @size.setter
-        def size(self, value):
-            self._size = value
-
-        def add_child(self, child):
-            self.children.append(child)
-            child.parent = self
-
-        def find_path(self, path):
-            if path == self.name:
-                return self
-
-            ch_name, ch_path = self._extract_child_path_and_name(path)
-
-            for child in self.children:
-                if child.name == ch_name:
-                    return child.find_path(ch_path)
-
-            return None
-
-        @staticmethod
-        def _extract_child_path_and_name(path):
-            path = path.strip('/')
-            next_sep = path.find('/')
-
-            if next_sep == -1:
-                ch_name = path
-                ch_path = path
-            else:
-                ch_name = path[0:next_sep]
-                ch_path = path[next_sep + 1:]
-            return ch_name, ch_path
-
-        @staticmethod
-        def _extract_file_name_and_file_dir(path):
-            path = path.strip('/')
-            sep = path.rfind('/')
-
-            if sep == -1:
-                f_name = path
-                f_dir = None
-            else:
-                f_name = path[sep + 1: len(path)]
-                f_dir = path[: sep]
-            return f_name, f_dir
-
-        def create_dir(self, path):
-            dirs = path.strip('/').split('/')
-            curr_dir = self
-            i = 0
-            while i < len(dirs):
-                d_name = dirs[i]
-
-                directory = next((x for x in curr_dir.children if x.name == d_name), None)
-                if directory is None:
-                    directory = self.FileNode(d_name, NodeType.directory)
-                    curr_dir.add_child(directory)
-
-                elif directory.type == NodeType.file:
-                    print("Can't create directory because of the wrong file name " + d_name)
-                    return "Error"
-                curr_dir = directory
-                i += 1
-
-            return curr_dir
-
-        def create_file(self, path):
-            f_name, f_dir = self._extract_file_name_and_file_dir(path)
-
-            if f_dir is not None:
-                directory = self.create_dir(f_dir)
-
-                if directory == "Error":
-                    return 'Error'
-            else:
-                directory = self
-
-            file = self.FileNode(f_name, NodeType.file)
-            directory.add_child(file)
-            return file
-
-        def find_file_by_chunk(self, path):
-
-            i = path.rfind('_')
-            if i is None:
-                print("Incorrect chunk path", path)
-                return Status.error
-
-            file_name = path[:i]
-            return self.find_path(file_name)
-
-        def delete(self):
-            if not self.is_root:
-                self.parent.children.remove(self)
-                self.parent = None
-
-        def get_full_path(self):
-            if self.is_root:
-                return ''
-            else:
-                return self.parent.get_full_path() + '/' + self.name
-
-        def get_full_dir_path(self):
-            if self.is_root:
-                return ''
-
-            path = self.parent.get_full_dir_path()
-            if self.type == NodeType.directory:
-                path += '/' + self.name
-
-            return path
-
-    class Replicator:
-        def __init__(self, ns):
-            self.ns = ns
-            self.queue = Queue()
-            self.on = True
-
-        def start(self):
-            print('Start replication workers')
-            _thread.start_new_thread(self._replicate_worker, ())
-            _thread.start_new_thread(self.server_watcher, ())
-
-        def put_in_queue(self, path, existing_cs):
-            item = (path, existing_cs)
-            self.queue.put(item)
-
-        def _replicate_worker(self):
-            while self.on:
-                item = self.queue.get()
-                self.replicate(item)
-
-        def replicate(self, item):
-            if item is None:
-                return
-
-            path = item[0]
-            cs_list = item[1]
-
-            alive = [x for x in cs_list if self.ns._is_alive_cs(x)]
-
-            if len(alive) == 0:
-                print('There is no live CS for chunk', path)
-                return
-
-            if len(alive) >= 2:
-                print('File', path, 'is already replicated to more than 2 nodes')
-                return
-
-            new_cs = self.ns._select_available_cs(alive)
-            if new_cs is None:
-                print("Can't find available CS for replication", path)
-            else:
-                try:
-                    cl = ServerProxy(alive[0])
-                    cl.replicate_chunk(path, new_cs)
-                    print("File", path, "replicated to", new_cs)
-
-                    file = self.ns.root.find_file_by_chunk(path)
-                    if file is not None and path in file.chunks:
-                        file.chunks[path].append(new_cs)
-                    else:
-                        print("Can't find file for chunk", path, "after replication")
-                except Exception as e:
-                    print('Error during replication', path, 'to', new_cs, ':', e)
-
-        def server_watcher(self):
-            while self.on:
-                for cs_name in list(self.ns.cs):
-                    if not self.ns._is_alive_cs(cs_name):
-                        print('CS', cs_name, 'detected as not alive')
-                        self.ns.cs.pop(cs_name)
-                        _thread.start_new_thread(self.emergency_replication, ())
-                time.sleep(1)
-
-        def emergency_replication(self):
-            print('Start emergency replication for files from')
-            self.traverse_replication(self.ns.root)
-
-        def traverse_replication(self, item):
-            if item.type == NodeType.file:
-                for c in list(item.chunks):
-                    alive = [x for x in item.chunks[c] if self.ns._is_alive_cs(c)]
-                    if len(alive) < 2:
-                        print('Chunk', c, 'put to replication')
-                        self.put_in_queue(c, item.chunks[c])
-            else:
-                for c in item.children:
-                    self.traverse_replication(c)
 
 
 if __name__ == '__main__':

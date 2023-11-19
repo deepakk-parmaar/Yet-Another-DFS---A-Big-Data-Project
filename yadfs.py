@@ -60,7 +60,7 @@ def mkdir(path):
     if stat != Status.ok:
         print(Status.description(stat))
 
-@click.command()
+@cli.command()
 @click.argument('source')
 @click.argument('destination')
 def cp(source, destination):
@@ -100,7 +100,7 @@ def rm(path):
     if stat != Status.ok:
         print(Status.description(stat))
 
-@click.command()
+@cli.command()
 @click.argument('source')
 @click.argument('destination')
 def mv(source, destination):
@@ -123,7 +123,7 @@ def status(path):
     res = cl.path_status(path)
     print('%s is a %s' % (path, NodeType.description(res['type'])))
 
-@click.command()
+@cli.command()
 def date():
     """Print the current date and time"""
     current_date_time = datetime.datetime.now()
@@ -141,7 +141,7 @@ def download(path_from, path_to):
     if stat != Status.ok:
         print(Status.description(stat))
 
-@click.command()
+@cli.command()
 @click.argument('path', default='.')
 def du(path):
     """Display file and directory space usage"""
@@ -152,7 +152,7 @@ def du(path):
             total_size += os.path.getsize(filepath)
     print(f"Total size of '{path}': {total_size} bytes")
 
-@click.command()
+@cli.command()
 @click.argument('file1')
 @click.argument('file2')
 def diff(file1, file2):
@@ -162,7 +162,7 @@ def diff(file1, file2):
         for line in diff_lines:
             print(line, end='')
             
-@click.command()
+@cli.command()
 @click.argument('file_path')
 def wc(file_path):
     """Count lines, words, and characters in a file"""
