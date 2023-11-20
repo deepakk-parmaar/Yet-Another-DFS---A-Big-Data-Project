@@ -64,6 +64,18 @@ class FileNode:
 
         return self._size
 
+    def distribute_chunk_replicas(chunk_path, replicas):
+    # Simulate distributing chunk replicas to different datanodes
+    for replica in replicas:
+        datanode_addr = replica.get('addr')
+        try:
+            datanode = ServerProxy(datanode_addr)
+            print(f"Distributing chunk {chunk_path} to datanode {datanode_addr}")
+            datanode.upload_chunk(chunk_path, replica.get('data'))
+        except Exception as e:
+            print(f"Failed to replicate chunk {chunk_path} to {datanode_addr}: {str(e)}")
+
+    
     @size.setter
     def size(self, value):
         self._size = value
@@ -71,6 +83,45 @@ class FileNode:
     def add_child(self, child):
         self.children.append(child)
         child.parent = self
+        
+        
+    def balance_chunk_distribution():
+    # Simulate balancing chunk distribution across datanodes
+    # ...
+
+    # Get a list of all datanodes and their chunk loads
+    datanode_loads = {}
+    for datanode_addr in datanodes:
+        try:
+            datanode = ServerProxy(datanode_addr)
+            datanode_loads[datanode_addr] = datanode.get_chunk_load()
+        except Exception as e:
+            print(f"Failed to get chunk load from datanode {datanode_addr}: {str(e)}")
+
+    # Identify datanodes with high chunk loads
+    high_load_datanodes = []
+    for datanode_addr, chunk_load in datanode_loads.items():
+        if chunk_load > average_chunk_load:
+            high_load_datanodes.append(datanode_addr)
+
+    # Redistribute chunks from high-load datanodes to low-load datanodes
+    for datanode_addr in high_load_datanodes:
+        chunks_to_redistribute = datanode.get_chunks_to_redistribute()
+        for chunk_path, chunk_data in chunks_to_redistribute.items():
+            # Find low-load datanodes to receive the chunk
+            low_load_datanodes = list(datanode_loads.keys())
+            while True:
+                low_load_datanode = random.choice(low_load_datanodes)
+                if datanode_loads[low_load_datanode] < average_chunk_load:
+                    break
+
+            # Distribute the chunk to the chosen low-load datanode
+            try:
+                low_load_datanode = ServerProxy(low_load_datanode)
+                low_load_datanode.upload_chunk(chunk_path, chunk_data)
+            except Exception as e:
+                print(f"Failed to distribute chunk {chunk_path} to {low_load_datanode}: {str(e)}")
+
 
     def find_path(self, path):
         if path == self.name:
@@ -97,6 +148,44 @@ class FileNode:
             ch_path = path[next_sep + 1:]
         return ch_name, ch_path
 
+    def balance_chunk_distribution():
+    # Simulate balancing chunk distribution across datanodes
+    # ...
+
+    # Get a list of all datanodes and their chunk loads
+    datanode_loads = {}
+    for datanode_addr in datanodes:
+        try:
+            datanode = ServerProxy(datanode_addr)
+            datanode_loads[datanode_addr] = datanode.get_chunk_load()
+        except Exception as e:
+            print(f"Failed to get chunk load from datanode {datanode_addr}: {str(e)}")
+
+    # Identify datanodes with high chunk loads
+    high_load_datanodes = []
+    for datanode_addr, chunk_load in datanode_loads.items():
+        if chunk_load > average_chunk_load:
+            high_load_datanodes.append(datanode_addr)
+
+    # Redistribute chunks from high-load datanodes to low-load datanodes
+    for datanode_addr in high_load_datanodes:
+        chunks_to_redistribute = datanode.get_chunks_to_redistribute()
+        for chunk_path, chunk_data in chunks_to_redistribute.items():
+            # Find low-load datanodes to receive the chunk
+            low_load_datanodes = list(datanode_loads.keys())
+            while True:
+                low_load_datanode = random.choice(low_load_datanodes)
+                if datanode_loads[low_load_datanode] < average_chunk_load:
+                    break
+
+            # Distribute the chunk to the chosen low-load datanode
+            try:
+                low_load_datanode = ServerProxy(low_load_datanode)
+                low_load_datanode.upload_chunk(chunk_path, chunk_data)
+            except Exception as e:
+                print(f"Failed to distribute chunk {chunk_path} to {low_load_datanode}: {str(e)}")
+
+
     @staticmethod
     def _extract_file_name_and_file_dir(path):
         path = path.strip('/')
@@ -109,6 +198,27 @@ class FileNode:
             f_name = path[sep + 1: len(path)]
             f_dir = path[: sep]
         return f_name, f_dir
+
+    def monitor_datanode_health():
+    # Simulate monitoring the health of datanodes and identifying unresponsive nodes
+    # ...
+
+    # Periodically check the status of all datanodes
+    while True:
+        unresponsive_datanodes = []
+        for datanode_addr in datanodes:
+            try:
+                datanode = ServerProxy(datanode_addr)
+                datanode.heartbeat()
+            except Exception as e:
+                unresponsive_datanodes.append(datanode_addr)
+
+        # Mark unresponsive datanodes as failed
+        for unresponsive_datanode_addr in unresponsive_datanodes:
+            print(f"Datanode {unresponsive_datanode_addr} is unresponsive")
+            # TODO: Implement mechanism to handle failed datanodes (replicate chunks, etc.)
+
+        time.sleep(heartbeat_interval)  # Check datanode health every heartbeat interval
 
     def create_dir(self, path):
         dirs = path.strip('/').split('/')
@@ -155,6 +265,23 @@ class FileNode:
         file_name = path[:i]
         return self.find_path(file_name)
 
+    def handle_datanode_failures():
+    # Simulate handling datanode failures by replicating chunks from failed nodes to other nodes
+    # ...
+
+    # Get a list of failed datanodes
+    failed_datanodes = []
+    # TODO: Implement mechanism to identify failed datanodes (e.g., from monitoring datanode health)
+
+    # Replicate chunks from failed datanodes to other nodes
+    for failed_datanode_addr in failed_datanodes:
+        chunks_to_replicate = []
+        # TODO: Implement mechanism to identify chunks on failed datanodes
+
+        for chunk_path, chunk_data in chunks_to_replicate:
+            # Distribute
+
+
     def delete(self):
         if not self.is_root:
             self.parent.children.remove(self)
@@ -182,10 +309,68 @@ class Replicator:
         self.queue = Queue()
         self.on = True
 
+    def distribute_chunk_replicas(chunk_path, replicas):
+    # Simulate distributing chunk replicas to different datanodes
+    for replica in replicas:
+        datanode_addr = replica.get('addr')
+        try:
+            datanode = ServerProxy(datanode_addr)
+            datanode.upload_chunk(chunk_path, replica.get('data'))
+            print(f"Replicating chunk {chunk_path} to datanode {datanode_addr}")
+        except Exception as e:
+            print(f"Failed to replicate chunk {chunk_path} to {datanode_addr}: {str(e)}")
+            # TODO: Handle replication failures gracefully, such as retrying or notifying the administrator
+
+    
     def start(self):
         print('Start replication workers')
         _thread.start_new_thread(self._replicate_worker, ())
         _thread.start_new_thread(self.server_watcher, ())
+
+    def balance_chunk_distribution():
+    # Simulate balancing chunk distribution across datanodes
+    # ...
+
+    # Get a list of all datanodes and their chunk loads
+    datanode_loads = {}
+    for datanode_addr in datanodes:
+        try:
+            datanode = ServerProxy(datanode_addr)
+            datanode_loads[datanode_addr] = datanode.get_chunk_load()
+        except Exception as e:
+            print(f"Failed to get chunk load from datanode {datanode_addr}: {str(e)}")
+            # TODO: Handle datanode failures gracefully, such as removing them from the datanode list
+
+    # Calculate the average chunk load
+    total_chunks = sum(datanode_loads.values())
+    average_chunk_load = total_chunks / len(datanode_loads)
+
+    # Identify datanodes with high chunk loads
+    high_load_datanodes = []
+    for datanode_addr, chunk_load in datanode_loads.items():
+        if chunk_load > average_chunk_load:
+            high_load_datanodes.append(datanode_addr)
+
+    # Redistribute chunks from high-load datanodes to low-load datanodes
+    for datanode_addr in high_load_datanodes:
+        chunks_to_redistribute = datanode.get_chunks_to_redistribute()
+        for chunk_path, chunk_data in chunks_to_redistribute.items():
+            # Find low-load datanodes to receive the chunk
+            low_load_datanodes = list(datanode_loads.keys())
+            while True:
+                low_load_datanode = random.choice(low_load_datanodes)
+                if datanode_loads[low_load_datanode] < average_chunk_load:
+                    break
+
+            # Distribute the chunk to the chosen low-load datanode
+            try:
+                low_load_datanode = ServerProxy(low_load_datanode)
+                low_load_datanode.upload_chunk(chunk_path, chunk_data)
+                print(f"Redistributing chunk {chunk_path} from {datanode_addr} to {low_load_datanode}")
+            except Exception as e:
+                print(f"Failed to distribute chunk {chunk_path} to {low_load_datanode}: {str(e)}")
+                # TODO: Handle redistribution failures gracefully
+
 
     def put_in_queue(self, path, existing_cs):
         item = (path, existing_cs)
@@ -195,6 +380,28 @@ class Replicator:
         while self.on:
             item = self.queue.get()
             self.replicate(item)
+
+    def monitor_datanode_health():
+    # Simulate monitoring the health of datanodes and identifying unresponsive nodes
+    # ...
+
+    # Periodically check the status of all datanodes
+    while True:
+        unresponsive_datanodes = []
+        for datanode_addr in datanodes:
+            try:
+                datanode = ServerProxy(datanode_addr)
+                datanode.heartbeat()
+            except Exception as e:
+                unresponsive_datanodes.append(datanode_addr)
+
+        # Mark unresponsive datanodes as failed
+        for unresponsive_datanode_addr in unresponsive_datanodes:
+            print(f"Datanode {unresponsive_datanode_addr} is unresponsive")
+            # TODO: Implement mechanism to handle failed datanodes (replicate chunks, remove from datanode list, etc.)
+
+        time.sleep(heartbeat_interval)  # Check datanode health every heartbeat interval
+
 
     def replicate(self, item):
         if item is None:
@@ -243,6 +450,36 @@ class Replicator:
         print('Start emergency replication for files from')
         self.traverse_replication(self.ns.root)
 
+   def handle_chunk_errors(chunk_path):
+    # Check for any errors associated with the chunk
+    errors = ns.get_chunk_errors(chunk_path)
+
+    # Simulate repairing corrupted chunks
+    for error in errors:
+        if error.type == "Corrupted":
+            print("Chunk", chunk_path, "is corrupted. Attempting to repair...")
+
+            # Simulate repairing the corrupted chunk
+            try:
+                # Read the corrupted chunk data
+                with open(chunk_path, "rb") as f:
+                    corrupted_data = f.read()
+
+                # Perform error correction or data recovery techniques
+                # ...
+
+                # Write the repaired data to the chunk
+                with open(chunk_path, "wb") as f:
+                    f.write(repaired_data)
+
+                print("Chunk", chunk_path, "has been repaired.")
+            except Exception as e:
+                print("Failed to repair chunk", chunk_path, ". Marking it as dead.")
+
+                # Simulate marking the chunk as dead
+                ns.mark_chunk_dead(chunk_path)
+
+
     def traverse_replication(self, item):
         if item.type == NodeType.file:
             for c in list(item.chunks):
@@ -253,6 +490,21 @@ class Replicator:
         else:
             for c in item.children:
                 self.traverse_replication(c)
+
+    def manage_chunk_versions(chunk_path):
+    # Get the list of versions for the chunk
+    versions = ns.get_chunk_versions(chunk_path)
+
+    # Simulate deleting old versions of the chunk
+    for version in versions:
+        if version != "latest":
+            version_path = os.path.join(self.local_fs_root, chunk_path + "." + version)
+            if os.path.exists(version_path):
+                os.remove(version_path)
+                print("Deleted old version", version_path)
+
+    # Simulate keeping a limited number of recent versions for backup or archival purposes
+    # ...
 
 class NameNode:
     def __init__(self, dump_on=True, dump_path="./name_server.yml", cs_timeout=2):
@@ -267,6 +519,24 @@ class NameNode:
         self._load_dump()
         self.repl.start()
 
+    def perform_background_data_integrity_checks():
+    # Regularly check for any inconsistencies or errors in the stored chunks
+    while True:
+        # Simulate scanning chunks for inconsistencies
+        for chunk_path in os.listdir(self.local_fs_root):
+            chunk_data = self.get_chunk(chunk_path)
+
+            # Verify the integrity of the chunk data using checksums or other techniques
+            # ...
+
+            if not check_chunk_integrity(chunk_data):
+                print("Chunk", chunk_path, "has data integrity issues.")
+
+                # Simulate marking the chunk as corrupted and notifying the namenode
+                # ...
+
+        time.sleep(integrity_check_interval)  # Check chunk integrity every integrity_check_interval
+
     def _load_dump(self):
         if os.path.isfile(self.dump_path):
             print("Trying to read the file tree from the dump file", self.dump_path)
@@ -276,6 +546,23 @@ class NameNode:
         else:
             print("No dump file detected")
 
+    def monitor_chunk_storage_usage():
+    # Simulate tracking the storage usage of the datanode's storage
+    disk_usage = psutil.disk_usage(self.local_fs_root)
+
+    # Generate alerts or notifications if storage usage reaches a certain threshold
+    if disk_usage.percent > storage_usage_threshold:
+        print("Datanode storage usage is approaching the threshold:", disk_usage.percent, "%")
+
+        # Simulate alerting the namenode about low disk space
+        self.ns.report_low_disk_space(self.addr)
+
+    # Implement mechanisms to optimize storage usage, such as purging old or unused chunks
+    # ...
+
+    
+    
+    
     def _dump(self):
         if self.dump_on:
             try:
@@ -288,6 +575,18 @@ class NameNode:
         if self.root.find_path(path) is not None:
             print(self.root.find_path(path))
             return {'status': Status.already_exists}
+
+   def implement_chunk_replication_throttling():
+    # Simulate regulating chunk replication to avoid overloading the network or datanodes
+    global replication_semaphore
+
+    # Acquire a semaphore to limit the number of concurrent chunk replication tasks
+    with replication_semaphore:
+        # Simulate replicating chunks in a controlled manner
+        # ...
+
+    # Release the semaphore when replication tasks are complete
+
 
         cs = self._select_available_cs()
         if cs is None:
@@ -340,6 +639,32 @@ class NameNode:
 
         return {'status': Status.ok}
 
+    def perform_namespace_garbage_collection():
+    # Simulate periodically removing orphaned files and unused chunks from the namespace
+    orphaned_files = []
+    unused_chunks = []
+
+    # Identify files that have no associated chunks or are no longer referenced by any users
+    for file_path, file_metadata in ns.get_all_file_metadata().items():
+        if not file_metadata.chunks:
+            orphaned_files.append(file_path)
+
+    # Identify chunks that are not associated with any files
+    for chunk_path in ns.get_all_chunks():
+        if chunk_path not in ns.get_all_file_chunks().values():
+            unused_chunks.append(chunk_path)
+
+    # Mark orphaned files and unused chunks as garbage and schedule them for deletion
+    for file_path in orphaned_files:
+        ns.mark_file_as_garbage(file_path)
+
+    for chunk_path in unused_chunks:
+        ns.mark_chunk_as_garbage(chunk_path)
+
+    # Perform cleanup operations to remove garbage from the namespace and datanodes
+    # ...
+
+
     def delete(self, path):
         print("Delete", path)
         item = self.root.find_path(path)
@@ -369,6 +694,27 @@ class NameNode:
                     except:
                         print('Failed to delete', f_path, 'from', cs)
 
+    def implement_namespace_backup_and_recovery():
+    # Simulate creating regular backups of the namespace to ensure data integrity and recoverability
+    backup_interval = 60 * 60  # Create backups every hour
+
+    while True:
+        # Generate a timestamp for the backup
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+        # Create a backup of the namespace data
+        backup_data = ns.get_all_file_metadata()
+
+        # Store the backup data to a separate storage location
+        backup_filename = f"namespace_backup_{timestamp}.json"
+        with open(backup_filename, "w") as f:
+            json.dump(backup_data, f)
+
+        print("Created namespace backup:", backup_filename)
+
+        time.sleep(backup_interval)  # Create backups every backup_interval
+
+
     def get_file_info(self, path):
         file = self.root.find_path(path)
         if file is None:
@@ -385,6 +731,21 @@ class NameNode:
                 'date': file.date,
                 'chunks': chunks}
 
+    def monitor_chunk_storage_usage():
+    # Simulate tracking the storage usage of the datanode's storage
+    disk_usage = psutil.disk_usage(self.local_fs_root)
+
+    # Generate alerts or notifications if storage usage reaches a certain threshold
+    if disk_usage.percent > storage_usage_threshold:
+        print("Datanode storage usage is approaching the threshold:", disk_usage.percent, "%")
+
+        # Simulate alerting the namenode about low disk space
+        self.ns.report_low_disk_space(self.addr)
+
+    # Implement mechanisms to optimize storage usage, such as purging old or unused chunks
+    # ...
+
+
     def make_directory(self, path):
         d = self.root.find_path(path)
 
@@ -396,6 +757,18 @@ class NameNode:
             return {'status': Status.error}
 
         return {'status': Status.ok}
+
+    def handle_chunk_access_logs(chunk_path):
+    # Get the access logs for the chunk
+    logs = ns.get_chunk_access_logs(chunk_path)
+
+    # Simulate analyzing access logs to identify usage patterns
+    for log in logs:
+        print("Chunk", chunk_path, "was accessed by", log.client_addr, "at", log.timestamp)
+
+        # Simulate taking actions based on access patterns, such as caching frequently accessed chunks
+        # ...
+
 
     def list_directory(self, path):
         print('Request to list directory ' + path)
@@ -410,6 +783,29 @@ class NameNode:
         result = {'status': Status.ok, 'items': items}
         return result
 
+    def perform_namespace_consistency_checks():
+    # Regularly check for any inconsistencies or errors in the namespace
+    while True:
+        # Simulate scanning the namespace for inconsistencies
+        inconsistencies = []
+
+        # Check for orphaned chunks (chunks not associated with any files)
+        # ...
+
+        # Check for duplicate file entries with the same name but different metadata
+        # ...
+
+        # Simulate correcting any detected inconsistencies
+        # ...
+
+        if inconsistencies:
+            print("Inconsistencies detected in the namespace:", inconsistencies)
+        else:
+            print("Namespace consistency check: No inconsistencies found.")
+
+        time.sleep(consistency_check_interval)  # Check namespace consistency every consistency_check_interval
+
+
     def size_of(self, path):
         i = self.root.find_path(path)
         if i is None:
@@ -417,6 +813,20 @@ class NameNode:
 
         return {'status': Status.ok, 'size': i.size}
 
+    def manage_file_metadata(file_path, metadata):
+    # Update the file metadata in the namenode's storage
+    # ...
+
+    # Simulate notifying datanodes about changes to file metadata
+    # ...
+    for datanode_addr in datanodes:
+        try:
+            datanode = ServerProxy(datanode_addr)
+            datanode.update_file_metadata(file_path, metadata)
+        except Exception as e:
+            print(f"Failed to notify datanode {datanode_addr} about file metadata update: {str(e)}")
+
+    
     def heartbeat(self, cs_addr):
         if cs_addr not in self.cs:
             print('Register CS ' + cs_addr)
