@@ -1,0 +1,5 @@
+docker compose up
+docker container ls
+docker cp hostPath containerId:containerPath
+docker exec -it CONTAINER_ID /bin/bash
+
