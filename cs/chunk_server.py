@@ -22,8 +22,6 @@ class NodeType:
         elif stat == 1:
             node = 'file'
         return node
-        
-
 
 class Status:
     ok = 200
