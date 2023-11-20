@@ -524,7 +524,7 @@ class NameNode:
         if os.path.isfile(self.dump_path):
             print("Trying to read the file tree from the dump file", self.dump_path)
             with open(self.dump_path) as f:
-                self.root = yaml.safe_load(f)
+                self.root = yaml.load(f,Loader=yaml.Loader)
             print("File tree has been loaded from the dump file")
         else:
             print("No dump file detected")
