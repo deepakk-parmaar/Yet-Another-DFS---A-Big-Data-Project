@@ -22,6 +22,8 @@ class NodeType:
         elif stat == 1:
             node = 'file'
         return node
+        
+
 
 class Status:
     ok = 200
@@ -69,7 +71,17 @@ class ChunkServer:
             except Exception as e:
                 pass
             time.sleep(self.hb_timeout)
+    
+    def implement_chunk_caching_mechanisms():
+        pass
+    # Cache frequently accessed chunks in memory or a faster storage medium
+    # to improve access performance
+    # ...
 
+    # Simulate managing the cached chunks and evicting them when necessary
+    # ... Later
+
+    
     def upload_chunk(self, chunk_path, chunk):
         print('Upload file', chunk_path)
         local_path = self.chunk_filename(chunk_path)
@@ -79,11 +91,47 @@ class ChunkServer:
             f.write(chunk)
             return {'status': Status.ok}
 
+    @staticmethod
+    def check_replication_level(chunk_path):
+        """
+        Checks the replication level of the given chunk.
+        :param chunk_path: The path to the chunk.
+        :return: The replication level of the chunk.
+        """
+
+        # Get the replicas of the chunk from the namespace server
+        replicas = ns.get_replicas(chunk_path)
+
+        # Check the replication level
+        if len(replicas) < 3:
+            print("Chunk", chunk_path, "has replication level", len(replicas), "below the minimum of 3.")
+
+        # Simulate replicating the chunk to another datanode
+        if len(replicas) < 3:
+            other_cs = random.choice(cs_addrs)
+            if other_cs != cs_addr:
+                print("Replicating", chunk_path, "to", other_cs)
+                other_cs.replicate_chunk(chunk_path, cs_addr)
+                
+                
     def get_chunk(self, chunk_path):
         local_path = self.chunk_filename(chunk_path)
         with open(local_path, "r") as f:
             data = f.read()
         return data
+        
+    def manage_chunk_versions(chunk_path):
+    # Get the list of versions for the chunk
+        versions = ns.get_chunk_versions(chunk_path)
+
+        # Simulate deleting old versions of the chunk
+        for version in versions:
+            if version != "latest":
+                version_path = self.chunk_filename(chunk_path + "." + version)
+                if os.path.exists(version_path):
+                    os.remove(version_path)
+                    print("Deleted old version", version_path)
+
 
     def delete_chunk(self, chunk_path):
         local_path = self.chunk_filename(chunk_path)
@@ -120,7 +168,45 @@ class ChunkServer:
         except OSError as exception:
             if exception.errno != errno.EEXIST:
                 raise
+    @staticmethod
+    def check_chunk_health():
+        """
+        Checks the health of the chunks on the datanode.
+        """
 
+        # Check for any chunks that have been marked as dead by the namespace server
+        dead_chunks = ns.get_dead_chunks()
+
+        # Simulate deleting dead chunks
+        for dead_chunk in dead_chunks:
+            if os.path.exists(dead_chunk):
+                os.remove(dead_chunk)
+                print("Deleted dead chunk", dead_chunk)
+                
+    def monitor_disk_usage():
+        # Get the disk usage of the datanode's storage
+        disk_usage = psutil.disk_usage(self.local_fs_root)
+
+        # Check if the disk usage is approaching the threshold
+        if disk_usage.percent > 80:
+            print("Disk usage is approaching the threshold:", disk_usage.percent, "%")
+
+            # Simulate alerting the namespace server about low disk space
+            self.ns.report_low_disk_space(self.addr)
+            
+        
+    def handle_chunk_access_logs(chunk_path):
+        # Get the access logs for the chunk
+        logs = ns.get_chunk_access_logs(chunk_path)
+
+        # Simulate analyzing access logs to identify usage patterns
+        for log in logs:
+            print("Chunk", chunk_path, "was accessed by", log.client_addr, "at", log.timestamp)
+
+            # Simulate taking actions based on access patterns
+            # ...
+
+            
 # args: host and port: localhost 9999
 if __name__ == '__main__':
     host = socket.gethostbyname(socket.gethostname())
@@ -139,4 +225,27 @@ if __name__ == '__main__':
     server.register_introspection_functions()
     server.register_instance(cs)
     server.serve_forever()
+
+
+
+def check_replication_level(chunk_path):
+    """
+    Checks the replication level of the given chunk.
+    :param chunk_path: The path to the chunk.
+    :return: The replication level of the chunk.
+    """
+
+    # Get the replicas of the chunk from the namespace server
+    replicas = ns.get_replicas(chunk_path)
+
+    # Check the replication level
+    if len(replicas) < 3:
+        print("Chunk", chunk_path, "has replication level", len(replicas), "below the minimum of 3.")
+
+    # Simulate replicating the chunk to another datanode
+    if len(replicas) < 3:
+        other_cs = random.choice(cs_addrs)
+        if other_cs != cs_addr:
+            print("Replicating", chunk_path, "to", other_cs)
+            other_cs.replicate_chunk(chunk_path, cs_addr)
 
