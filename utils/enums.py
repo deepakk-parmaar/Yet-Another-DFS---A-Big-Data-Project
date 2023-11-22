@@ -79,7 +79,6 @@ def store_file_chunk(chunk):
     # Simulate storing the file chunk in the node's storage
     print("Storing file chunk: {}".format(chunk))
     
-# Dead code related to distributed file system
 def retrieve_file(file_path, nodes):
     # Check if the file exists in any of the nodes
     file_exists = False

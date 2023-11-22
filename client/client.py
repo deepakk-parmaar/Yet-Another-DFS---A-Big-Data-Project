@@ -2,6 +2,8 @@
 import os
 import errno
 from xmlrpc.client import ServerProxy
+import ssl
+import socket
 
 import sys
 # from os.path import dirname
@@ -296,3 +298,39 @@ class Client:
             if exception.errno != errno.EEXIST:
                 raise
 
+class client:
+    def __init__(self, name_node_address):
+        self.name_node_address = name_node_address
+
+    def authenticate(self):
+        # Implement authentication logic here
+        # Example: send a challenge and expect a valid response from the server
+        # Simulating a simple authentication challenge-response
+        with socket.create_connection(self.name_node_address) as client_socket:
+            client_socket = ssl.wrap_socket(client_socket, ssl_version=ssl.PROTOCOL_TLSv1_2)
+            client_socket.send(b"Challenge")
+            response = client_socket.recv(1024)
+            if response == b"ValidResponse":
+                print("Authentication successful.")
+                return True
+            else:
+                print("Authentication failed.")
+                return False
+
+    def upload_file(self, filename):
+        if self.authenticate():
+            with socket.create_connection(self.name_node_address) as client_socket:
+                client_socket = ssl.wrap_socket(client_socket, ssl_version=ssl.PROTOCOL_TLSv1_2)
+                with open(filename, 'rb') as file:
+                    file_content = file.read()
+                    file_size = len(file_content)
+                    checksum = "mock_checksum"  # Calculate the actual checksum
+
+                    # Send upload command to NameNode
+                    upload_command = f"upload {filename} {file_size} {checksum}"
+                    client_socket.send(upload_command.encode())
+
+                    # Simulate sending file content to NameNode
+                    client_socket.sendall(file_content)
+
+                print(f"File '{filename}' uploaded successfully to DFS.")

@@ -1,38 +1,53 @@
-version: '2'
+version: "2"
 
 services:
-    ns:
-        build:
-            context: .
-            dockerfile: ns/Dockerfile
-        image: yadfs:ns
-        tty: true
-        stdin_open: true
-    cs:
-        build:
-            context: .
-            dockerfile: cs/Dockerfile
-        image: yadfs:cs
-        tty: true
-        stdin_open: true
-        environment:
-            YAD_NS: http://ns:8888
-        depends_on:
-            - ns
-        links:
-            - ns
-    client:
-        build:
-            context: .
-            dockerfile: Dockerfile
-        image: yadfs:client
-        tty: true
-        stdin_open: true
-        environment:
-            YAD_NS: http://ns:8888
-        depends_on:
-            - ns
-            - cs
-        links:
-            - ns
-            - cs
+  ns:
+    build:
+      context: .
+      dockerfile: ns/Dockerfile
+    image: yadfs:ns
+    tty: true
+    stdin_open: true
+  cs1:
+    build:
+      context: .
+      dockerfile: cs1/Dockerfile
+    image: yadfs:cs1
+    tty: true
+    stdin_open: true
+    environment:
+      YAD_NS: http://ns:8888
+    depends_on:
+      - ns
+    links:
+      - ns
+  cs2:
+    build:
+      context: .
+      dockerfile: cs2/Dockerfile
+    image: yadfs:cs2
+    tty: true
+    stdin_open: true
+    environment:
+      YAD_NS: http://ns:8888
+    depends_on:
+      - ns
+    links:
+      - ns
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yadfs:client
+    tty: true
+    stdin_open: true
+    environment:
+      YAD_NS: http://ns:8888
+    depends_on:
+      - ns
+      - cs1
+      - cs2
+    links:
+      - ns
+      - cs1
+      - cs2

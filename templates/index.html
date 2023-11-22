@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed File System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #4285f4;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2d76f7;
+        }
+
+        hr {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Distributed File System</h1>
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label for="file">Choose a file:</label>
+        <input type="file" id="file" name="file" accept=".txt">
+        <button type="submit">Upload</button>
+    </form>
+
+    <hr>
+
+    <h2>File List</h2>
+    <ul>
+        <!-- Display a list of files in the distributed file system -->
+        <!-- You may need to dynamically generate this list based on the actual file system state -->
+        <li>File 1</li>
+        <li>File 2</li>
+        <li>File 3</li>
+        <!-- Add more items as needed -->
+    </ul>
+</body>
+</html>
+
